@@ -13,4 +13,4 @@ app.include_router(radiography_router, prefix="/api/v1")
 
 @app.get("/")
 def root():
-    return {"message": "API funcionando"}
+    return {"message": "API is running"}
