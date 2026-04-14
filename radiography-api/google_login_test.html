@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Login Test</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.5;
+    }
+
+    .box {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      background: #f7f7f7;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      margin-top: 12px;
+      font-family: Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Prueba de Google Login</h1>
+  <p>Inicia sesion con Google. Cuando aparezca el token, copialo y pegalo en Swagger en <code>POST /api/v1/auth/login</code>.</p>
+
+  <div
+    id="g_id_onload"
+    data-client_id="96697228689-qrn2tcmbn2fvhqfe3rv0ni3obsi9g1m4.apps.googleusercontent.com"
+    data-context="signin"
+    data-ux_mode="popup"
+    data-callback="handleCredentialResponse"
+    data-auto_prompt="false">
+  </div>
+
+  <div
+    class="g_id_signin"
+    data-type="standard"
+    data-size="large"
+    data-theme="outline"
+    data-text="signin_with"
+    data-shape="rectangular"
+    data-logo_alignment="left">
+  </div>
+
+  <div class="box">
+    <strong>Token de Google:</strong>
+    <textarea id="tokenOutput" readonly placeholder="Aqui aparecera el token real de Google"></textarea>
+  </div>
+
+  <script>
+    function handleCredentialResponse(response) {
+      document.getElementById("tokenOutput").value = response.credential || "";
+    }
+  </script>
+</body>
+</html>
