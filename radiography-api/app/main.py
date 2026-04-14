@@ -3,6 +3,7 @@ from app.routers.auth_router import router as auth_router
 from app.routers.radiography_router import router as radiography_router
 from fastapi import UploadFile, File
 from app.services.cloudinary_service import upload_image
+from fastapi import FastAPI, UploadFile, File
 
 app = FastAPI(
     title="Radiography API",

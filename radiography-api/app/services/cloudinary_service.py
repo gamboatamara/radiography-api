@@ -14,14 +14,14 @@ cloudinary.config(
 ALLOWED_TYPES = {"image/jpeg", "image/png"}
 
 
-def upload_image(file: UploadFile) -> str:
+def validate_image_file(file: UploadFile) -> None:
     if not file:
         raise HTTPException(status_code=400, detail="No se recibió archivo")
 
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Tipo no permitido (solo JPG/PNG)"
+            detail="Tipo no permitido. Solo se aceptan JPG y PNG"
         )
 
     file.file.seek(0, 2)
@@ -31,15 +31,29 @@ def upload_image(file: UploadFile) -> str:
     if size > settings.MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail="Archivo demasiado grande"
+            detail="Archivo demasiado grande. Máximo permitido: 5 MB"
         )
+
+
+def upload_image(file: UploadFile) -> str:
+    validate_image_file(file)
 
     try:
         result = cloudinary.uploader.upload(file.file)
-        return result["secure_url"]
+        url = result.get("secure_url")
 
+        if not url:
+            raise HTTPException(
+                status_code=500,
+                detail="No se pudo obtener la URL de la imagen subida"
+            )
+
+        return url
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=f"Error al subir la imagen a Cloudinary: {str(e)}"
         )
