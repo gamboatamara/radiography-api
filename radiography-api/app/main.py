@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+from app.db.database import Base, engine
 from app.routers.auth_router import router as auth_router
 from app.routers.radiography_router import router as radiography_router
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Radiography API",

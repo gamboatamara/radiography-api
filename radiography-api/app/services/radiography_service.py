@@ -6,7 +6,7 @@ class RadiographyService:
     def __init__(self, repository: RadiographyRepository):
         self.repository = repository
 
-    def create_radiography(self, data: dict) -> dict:
+    def create_radiography(self, data: dict):
         existing = self.repository.get_by_patient_code(data["patient_code"])
         if existing:
             raise HTTPException(
@@ -30,13 +30,13 @@ class RadiographyService:
         if full_name:
             items = [
                 item for item in items
-                if full_name.lower() in item["full_name"].lower()
+                if full_name.lower() in item.full_name.lower()
             ]
 
         if patient_code:
             items = [
                 item for item in items
-                if patient_code.lower() in item["patient_code"].lower()
+                if patient_code.lower() in item.patient_code.lower()
             ]
 
         allowed_sort_fields = {"id", "full_name", "patient_code", "study_date"}
@@ -47,7 +47,7 @@ class RadiographyService:
             )
 
         reverse = order.lower() == "desc"
-        items = sorted(items, key=lambda x: x[sort_by], reverse=reverse)
+        items = sorted(items, key=lambda x: getattr(x, sort_by), reverse=reverse)
 
         total = len(items)
         start = (page - 1) * limit
@@ -61,7 +61,7 @@ class RadiographyService:
             "items": paginated_items,
         }
 
-    def get_radiography_by_id(self, item_id: int) -> dict:
+    def get_radiography_by_id(self, item_id: int):
         item = self.repository.get_by_id(item_id)
         if not item:
             raise HTTPException(
@@ -70,7 +70,7 @@ class RadiographyService:
             )
         return item
 
-    def update_radiography(self, item_id: int, data: dict) -> dict:
+    def update_radiography(self, item_id: int, data: dict):
         item = self.repository.get_by_id(item_id)
         if not item:
             raise HTTPException(
@@ -78,7 +78,7 @@ class RadiographyService:
                 detail="Registro no encontrado",
             )
 
-        if "patient_code" in data and data["patient_code"] != item["patient_code"]:
+        if "patient_code" in data and data["patient_code"] != item.patient_code:
             existing = self.repository.get_by_patient_code(data["patient_code"])
             if existing:
                 raise HTTPException(

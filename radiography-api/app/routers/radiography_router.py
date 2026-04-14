@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Depends, status
+from sqlalchemy.orm import Session
+
 from app.schemas.radiography_schema import (
     RadiographyCreate,
     RadiographyUpdate,
@@ -7,11 +9,9 @@ from app.schemas.radiography_schema import (
 )
 from app.repositories.radiography_repository import RadiographyRepository
 from app.services.radiography_service import RadiographyService
+from app.db.session import get_db
 
 router = APIRouter()
-
-repository = RadiographyRepository()
-service = RadiographyService(repository)
 
 
 @router.post(
@@ -20,7 +20,9 @@ service = RadiographyService(repository)
     status_code=status.HTTP_201_CREATED,
     summary="Crear registro radiográfico",
 )
-def create_radiography(payload: RadiographyCreate):
+def create_radiography(payload: RadiographyCreate, db: Session = Depends(get_db)):
+    repository = RadiographyRepository(db)
+    service = RadiographyService(repository)
     return service.create_radiography(payload.model_dump())
 
 
@@ -36,7 +38,10 @@ def list_radiographies(
     patient_code: str | None = Query(None, description="Filtrar por código del paciente"),
     sort_by: str = Query("id", description="Campo de ordenamiento: id, full_name, patient_code, study_date"),
     order: str = Query("asc", pattern="^(asc|desc)$", description="Orden asc o desc"),
+    db: Session = Depends(get_db),
 ):
+    repository = RadiographyRepository(db)
+    service = RadiographyService(repository)
     return service.list_radiographies(
         page=page,
         limit=limit,
@@ -52,7 +57,9 @@ def list_radiographies(
     response_model=RadiographyResponse,
     summary="Obtener registro por ID",
 )
-def get_radiography(item_id: int):
+def get_radiography(item_id: int, db: Session = Depends(get_db)):
+    repository = RadiographyRepository(db)
+    service = RadiographyService(repository)
     return service.get_radiography_by_id(item_id)
 
 
@@ -61,7 +68,13 @@ def get_radiography(item_id: int):
     response_model=RadiographyResponse,
     summary="Actualizar registro radiográfico",
 )
-def update_radiography(item_id: int, payload: RadiographyUpdate):
+def update_radiography(
+    item_id: int,
+    payload: RadiographyUpdate,
+    db: Session = Depends(get_db),
+):
+    repository = RadiographyRepository(db)
+    service = RadiographyService(repository)
     data = payload.model_dump(exclude_unset=True)
     return service.update_radiography(item_id, data)
 
@@ -70,10 +83,7 @@ def update_radiography(item_id: int, payload: RadiographyUpdate):
     "/{item_id}",
     summary="Eliminar registro radiográfico",
 )
-def delete_radiography(item_id: int):
+def delete_radiography(item_id: int, db: Session = Depends(get_db)):
+    repository = RadiographyRepository(db)
+    service = RadiographyService(repository)
     return service.delete_radiography(item_id)
-
-
-@router.get("/test", summary="Test Radiography")
-def test_radiography():
-    return {"message": "Radiography router OK"}
