@@ -32,3 +32,7 @@ class RadiographyListResponse(BaseModel):
     page: int
     limit: int
     items: list[RadiographyResponse]
+
+
+class MessageResponse(BaseModel):
+    message: str

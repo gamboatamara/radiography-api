@@ -21,7 +21,7 @@ def root():
     return {"message": "API is running"}
 
 
-@app.post("/test-upload")
+@app.post("/test-upload", tags=["Cloudinary"], summary="Test Upload")
 def test_upload(file: UploadFile = File(...)):
     url = upload_image(file)
     return {"url": url}

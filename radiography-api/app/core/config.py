@@ -8,9 +8,9 @@ GOOGLE_CLIENT_ID = "96697228689-qrn2tcmbn2fvhqfe3rv0ni3obsi9g1m4.apps.googleuser
 
 
 class Settings(BaseSettings):
-    CLOUDINARY_CLOUD_NAME: str
-    CLOUDINARY_API_KEY: str
-    CLOUDINARY_API_SECRET: str
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
     MAX_FILE_SIZE: int = 5 * 1024 * 1024
 
     class Config:
