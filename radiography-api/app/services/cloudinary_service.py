@@ -3,6 +3,7 @@ import cloudinary.uploader
 from fastapi import UploadFile, HTTPException
 
 from app.core.config import settings
+from app.core.file_validators import validate_image_file
 
 cloudinary.config(
     cloud_name=settings.CLOUDINARY_CLOUD_NAME,
@@ -10,30 +11,6 @@ cloudinary.config(
     api_secret=settings.CLOUDINARY_API_SECRET,
     secure=True
 )
-
-ALLOWED_TYPES = {"image/jpeg", "image/png"}
-
-
-def validate_image_file(file: UploadFile) -> None:
-    if not file:
-        raise HTTPException(status_code=400, detail="No se recibió archivo")
-
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Tipo no permitido. Solo se aceptan JPG y PNG"
-        )
-
-    file.file.seek(0, 2)
-    size = file.file.tell()
-    file.file.seek(0)
-
-    if size > settings.MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail="Archivo demasiado grande. Máximo permitido: 5 MB"
-        )
-
 
 def upload_image(file: UploadFile) -> str:
     validate_image_file(file)
