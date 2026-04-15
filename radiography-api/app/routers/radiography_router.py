@@ -7,9 +7,11 @@ from app.schemas.radiography_schema import (
     RadiographyResponse,
     RadiographyListResponse,
 )
+from app.schemas.auth_schema import UserResponse
 from app.repositories.radiography_repository import RadiographyRepository
 from app.services.radiography_service import RadiographyService
 from app.db.session import get_db
+from app.core.security import get_current_user
 
 router = APIRouter()
 
@@ -20,7 +22,11 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Crear registro radiográfico",
 )
-def create_radiography(payload: RadiographyCreate, db: Session = Depends(get_db)):
+def create_radiography(
+    payload: RadiographyCreate,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
     return service.create_radiography(payload.model_dump())
@@ -39,6 +45,7 @@ def list_radiographies(
     sort_by: str = Query("id", description="Campo de ordenamiento: id, full_name, patient_code, study_date"),
     order: str = Query("asc", pattern="^(asc|desc)$", description="Orden asc o desc"),
     db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
@@ -57,7 +64,11 @@ def list_radiographies(
     response_model=RadiographyResponse,
     summary="Obtener registro por ID",
 )
-def get_radiography(item_id: int, db: Session = Depends(get_db)):
+def get_radiography(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
     return service.get_radiography_by_id(item_id)
@@ -72,6 +83,7 @@ def update_radiography(
     item_id: int,
     payload: RadiographyUpdate,
     db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
@@ -83,7 +95,11 @@ def update_radiography(
     "/{item_id}",
     summary="Eliminar registro radiográfico",
 )
-def delete_radiography(item_id: int, db: Session = Depends(get_db)):
+def delete_radiography(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
     return service.delete_radiography(item_id)
