@@ -1,7 +1,15 @@
-
 from datetime import date
 
-from fastapi import APIRouter, Query, Depends, status, Form, UploadFile, File
+from fastapi import (
+    APIRouter,
+    Query,
+    Depends,
+    status,
+    Form,
+    UploadFile,
+    File,
+    Path,
+)
 from sqlalchemy.orm import Session
 
 from app.schemas.radiography_schema import (
@@ -16,21 +24,29 @@ from app.db.session import get_db
 from app.core.security import get_current_user
 from app.services.cloudinary_service import upload_image
 
-router = APIRouter()
+router = APIRouter(tags=["Radiography"])
 
 
 @router.post(
     "/",
     response_model=RadiographyResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Crear registro radiográfico con imagen",
+    summary="Create radiography record with image",
+    description="Creates a new radiography record, uploads the image to Cloudinary, and stores the public URL along with the patient data.",
+    responses={
+        201: {"description": "Radiography record created successfully"},
+        400: {"description": "Invalid data or unsupported file type"},
+        401: {"description": "Unauthorized"},
+        409: {"description": "A record with this patient_code already exists"},
+        500: {"description": "Internal error while uploading the image or saving the record"},
+    },
 )
 def create_radiography(
-    full_name: str = Form(...),
-    patient_code: str = Form(...),
-    clinical_description: str = Form(...),
-    study_date: date = Form(...),
-    file: UploadFile = File(...),
+    full_name: str = Form(..., description="Full name of the patient"),
+    patient_code: str = Form(..., description="Patient code or medical record number"),
+    clinical_description: str = Form(..., description="Brief clinical description"),
+    study_date: date = Form(..., description="Radiography study date"),
+    file: UploadFile = File(..., description="Radiography image file (JPG or PNG)"),
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -52,15 +68,28 @@ def create_radiography(
 @router.get(
     "/",
     response_model=RadiographyListResponse,
-    summary="Listar registros radiográficos",
+    summary="List radiography records",
+    description="Returns a paginated list of radiography records with optional filters and sorting.",
+    responses={
+        200: {"description": "Radiography records retrieved successfully"},
+        401: {"description": "Unauthorized"},
+        400: {"description": "Invalid query parameters"},
+    },
 )
 def list_radiographies(
-    page: int = Query(1, ge=1, description="Número de página"),
-    limit: int = Query(10, ge=1, le=100, description="Cantidad por página"),
-    full_name: str | None = Query(None, description="Filtrar por nombre del paciente"),
-    patient_code: str | None = Query(None, description="Filtrar por código del paciente"),
-    sort_by: str = Query("id", description="Campo de ordenamiento: id, full_name, patient_code, study_date"),
-    order: str = Query("asc", pattern="^(asc|desc)$", description="Orden asc o desc"),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Number of records per page"),
+    full_name: str | None = Query(None, description="Filter by patient name"),
+    patient_code: str | None = Query(None, description="Filter by patient code"),
+    sort_by: str = Query(
+        "id",
+        description="Sort field: id, full_name, patient_code, study_date",
+    ),
+    order: str = Query(
+        "asc",
+        pattern="^(asc|desc)$",
+        description="Sort order: asc or desc",
+    ),
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -79,10 +108,16 @@ def list_radiographies(
 @router.get(
     "/{item_id}",
     response_model=RadiographyResponse,
-    summary="Obtener registro por ID",
+    summary="Get radiography record by ID",
+    description="Retrieves a specific radiography record using its unique identifier.",
+    responses={
+        200: {"description": "Radiography record retrieved successfully"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Radiography record not found"},
+    },
 )
 def get_radiography(
-    item_id: int,
+    item_id: int = Path(..., ge=1, description="Radiography record ID"),
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -94,15 +129,24 @@ def get_radiography(
 @router.put(
     "/{item_id}",
     response_model=RadiographyResponse,
-    summary="Actualizar registro radiográfico con imagen opcional",
+    summary="Update radiography record (optional image)",
+    description="Updates one or more fields of an existing radiography record. Allows optional image replacement.",
+    responses={
+        200: {"description": "Radiography record updated successfully"},
+        400: {"description": "Invalid data or unsupported file type"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Radiography record not found"},
+        409: {"description": "Another record with this patient_code already exists"},
+        500: {"description": "Internal error while uploading the image or updating the record"},
+    },
 )
 def update_radiography(
-    item_id: int,
-    full_name: str | None = Form(None),
-    patient_code: str | None = Form(None),
-    clinical_description: str | None = Form(None),
-    study_date: date | None = Form(None),
-    file: UploadFile | None = File(None),
+    item_id: int = Path(..., ge=1, description="Radiography record ID"),
+    full_name: str | None = Form(None, description="Updated full name"),
+    patient_code: str | None = Form(None, description="Updated patient code"),
+    clinical_description: str | None = Form(None, description="Updated clinical description"),
+    study_date: date | None = Form(None, description="Updated study date"),
+    file: UploadFile | None = File(None, description="New radiography image (optional)"),
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -127,13 +171,19 @@ def update_radiography(
 @router.delete(
     "/{item_id}",
     response_model=MessageResponse,
-    summary="Eliminar registro radiográfico",
+    summary="Delete radiography record",
+    description="Deletes a radiography record from the system.",
+    responses={
+        200: {"description": "Radiography record deleted successfully"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Radiography record not found"},
+    },
 )
 def delete_radiography(
-    item_id: int,
+    item_id: int = Path(..., ge=1, description="Radiography record ID"),
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
-    return service.delete_radiography(item_id)
+    return service.delete_radiography(item_id)  

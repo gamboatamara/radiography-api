@@ -12,8 +12,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-app.include_router(auth_router, prefix="/api/v1/auth", tags=["Auth"])
-app.include_router(radiography_router, prefix="/api/v1/radiography", tags=["Radiography"])
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(radiography_router, prefix="/api/v1/radiography")
 
 
 @app.get("/")

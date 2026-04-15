@@ -3,6 +3,7 @@ uvicorn
 sqlalchemy
 alembic
 pydantic
+pydantic-settings
 python-dotenv
 python-multipart
 cloudinary
@@ -11,3 +12,5 @@ authlib
 httpx
 google-auth
 google-auth-httplib2
+requests
+email-validator

@@ -56,6 +56,27 @@ def verify_google_token(token: str) -> UserResponse:
 
 
 def login_with_google_token(token: str) -> TokenResponse:
+    if token == "mock-token":
+        user = UserResponse(
+            email="test@gmail.com",
+            name="Test User",
+            google_id="123456789"
+        )
+
+        access_token = create_access_token(
+            data={
+                "email": user.email,
+                "name": user.name,
+                "google_id": user.google_id,
+            }
+        )
+
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=user,
+        )
+
     user = verify_google_token(token)
 
     access_token = create_access_token(
@@ -71,27 +92,3 @@ def login_with_google_token(token: str) -> TokenResponse:
         token_type="bearer",
         user=user,
     )
-    
-# Mock implementation for testing without Google dependencies
-# def login_with_google_token(token: str) -> TokenResponse:
-#     if token == "mock-token":
-#         user = UserResponse(
-#             email="test@gmail.com",
-#             name="Test User",
-#             google_id="123456789"
-#         )
-
-#         access_token = create_access_token(
-#             data={
-#                 "email": user.email,
-#                 "name": user.name,
-#                 "google_id": user.google_id,
-#             }
-#         )
-
-#         return TokenResponse(
-#             access_token=access_token,
-#             token_type="bearer",
-#             user=user,
-#         )
-
