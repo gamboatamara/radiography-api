@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
+
 from app.db.database import Base, engine
 from app.routers.auth_router import router as auth_router
 from app.routers.radiography_router import router as radiography_router
+from app.services.cloudinary_service import upload_image
 
 Base.metadata.create_all(bind=engine)
 
@@ -17,3 +19,9 @@ app.include_router(radiography_router, prefix="/api/v1/radiography", tags=["Radi
 @app.get("/")
 def root():
     return {"message": "API is running"}
+
+
+@app.post("/test-upload")
+def test_upload(file: UploadFile = File(...)):
+    url = upload_image(file)
+    return {"url": url}
