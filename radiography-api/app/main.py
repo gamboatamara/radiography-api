@@ -16,7 +16,12 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(radiography_router, prefix="/api/v1/radiography")
 
 
-@app.get("/")
+@app.get(
+    "/",
+    tags=["System"],
+    summary="Health check",
+    description="Verify that the API is running correctly"
+)
 def root():
     return {"message": "API is running"}
 
