@@ -22,7 +22,7 @@ def upload_image(file: UploadFile) -> str:
         if not url:
             raise HTTPException(
                 status_code=500,
-                detail="No se pudo obtener la URL de la imagen subida"
+                detail="Could not obtain the uploaded image URL"
             )
 
         return url
@@ -32,5 +32,5 @@ def upload_image(file: UploadFile) -> str:
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error al subir la imagen a Cloudinary: {str(e)}"
+            detail=f"Error uploading image to Cloudinary: {str(e)}"
         )

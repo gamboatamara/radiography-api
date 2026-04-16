@@ -11,12 +11,12 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 
 def validate_image_file(file: UploadFile) -> None:
     if not file:
-        raise HTTPException(status_code=400, detail="No se recibió archivo")
+        raise HTTPException(status_code=400, detail="No file received")
 
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Tipo no permitido. Solo se aceptan JPG, JPEG, PNG y WEBP"
+            detail="File type not allowed. Only JPG, JPEG, PNG and WEBP are accepted"
         )
 
     file.file.seek(0, 2)
@@ -26,5 +26,5 @@ def validate_image_file(file: UploadFile) -> None:
     if size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail="Archivo demasiado grande. Máximo permitido: 5 MB"
+            detail="File too large. Maximum allowed: 5 MB"
         )

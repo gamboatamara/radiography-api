@@ -11,7 +11,7 @@ class RadiographyService:
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Ya existe un registro con ese patient_code",
+                detail="A record with this patient_code already exists",
             )
 
         return self.repository.create(data)
@@ -43,7 +43,7 @@ class RadiographyService:
         if sort_by not in allowed_sort_fields:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"sort_by inválido. Use uno de: {', '.join(sorted(allowed_sort_fields))}",
+                detail=f"Invalid sort_by. Use one of: {', '.join(sorted(allowed_sort_fields))}",
             )
 
         reverse = order.lower() == "desc"
@@ -66,7 +66,7 @@ class RadiographyService:
         if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Registro no encontrado",
+                detail="Record not found",
             )
         return item
 
@@ -75,7 +75,7 @@ class RadiographyService:
         if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Registro no encontrado",
+                detail="Record not found",
             )
 
         if "patient_code" in data and data["patient_code"] != item.patient_code:
@@ -83,7 +83,7 @@ class RadiographyService:
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Ya existe un registro con ese patient_code",
+                    detail="A record with this patient_code already exists",
                 )
 
         updated = self.repository.update(item_id, data)
@@ -94,7 +94,7 @@ class RadiographyService:
         if not deleted:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Registro no encontrado",
+                detail="Record not found",
             )
 
-        return {"message": "Registro eliminado correctamente"}
+        return {"message": "Record deleted successfully"}
