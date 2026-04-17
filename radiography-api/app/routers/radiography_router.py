@@ -9,6 +9,7 @@ from fastapi import (
     UploadFile,
     File,
     Path,
+    Request,
 )
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,8 @@ from app.schemas.radiography_schema import (
     RadiographyResponse,
     RadiographyListResponse,
     MessageResponse,
+    RadiographyImageTokenResponse,
+    SignedImageUrlResponse,
 )
 from app.schemas.auth_schema import UserResponse
 from app.repositories.radiography_repository import RadiographyRepository
@@ -50,14 +53,14 @@ def create_radiography(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    image_url = upload_image(file)
+    upload_result = upload_image(file)
 
     data = {
         "full_name": full_name,
         "patient_code": patient_code,
         "clinical_description": clinical_description,
         "study_date": study_date,
-        "image_url": image_url,
+        "image_url": upload_result["image_url"],
     }
 
     repository = RadiographyRepository(db)
@@ -126,6 +129,61 @@ def get_radiography(
     return service.get_radiography_by_id(item_id)
 
 
+@router.post(
+    "/{item_id}/image-token",
+    response_model=RadiographyImageTokenResponse,
+    summary="Generate image access token",
+    description="Creates a short-lived JWT tied to the authenticated user and the requested radiography image.",
+    responses={
+        200: {"description": "Image token generated successfully"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Radiography record or image not found"},
+    },
+)
+def create_radiography_image_token(
+    request: Request,
+    item_id: int = Path(..., ge=1, description="Radiography record ID"),
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    repository = RadiographyRepository(db)
+    service = RadiographyService(repository)
+    image_access_url = str(
+        request.url_for("get_radiography_signed_image_url", item_id=item_id)
+    )
+    return service.generate_image_token(
+        item_id=item_id,
+        user=current_user,
+        image_access_url=image_access_url,
+    )
+
+
+@router.get(
+    "/{item_id}/image-access",
+    response_model=SignedImageUrlResponse,
+    summary="Validate image token and return signed URL",
+    description="Validates the image JWT and returns a temporary signed Cloudinary URL for the requested radiography.",
+    responses={
+        200: {"description": "Signed image URL generated successfully"},
+        401: {"description": "Invalid or expired image token"},
+        404: {"description": "Radiography record or image not found"},
+    },
+)
+def get_radiography_signed_image_url(
+    item_id: int = Path(..., ge=1, description="Radiography record ID"),
+    token: str = Query(..., min_length=10, description="Short-lived image access token"),
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    repository = RadiographyRepository(db)
+    service = RadiographyService(repository)
+    return service.get_signed_image_access(
+        item_id=item_id,
+        token=token,
+        user=current_user,
+    )
+
+
 @router.put(
     "/{item_id}",
     response_model=RadiographyResponse,
@@ -161,7 +219,8 @@ def update_radiography(
     if study_date is not None:
         data["study_date"] = study_date
     if file is not None:
-        data["image_url"] = upload_image(file)
+        upload_result = upload_image(file)
+        data["image_url"] = upload_result["image_url"]
 
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)

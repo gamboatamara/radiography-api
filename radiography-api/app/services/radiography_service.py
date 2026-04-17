@@ -1,5 +1,12 @@
 from fastapi import HTTPException, status
+
+from app.schemas.auth_schema import UserResponse
 from app.repositories.radiography_repository import RadiographyRepository
+from app.services.auth_service import (
+    generate_radiography_image_token,
+    validate_radiography_image_token,
+)
+from app.services.cloudinary_service import generate_signed_image_url
 
 
 class RadiographyService:
@@ -69,6 +76,53 @@ class RadiographyService:
                 detail="Record not found",
             )
         return item
+
+    def generate_image_token(
+        self,
+        item_id: int,
+        user: UserResponse,
+        image_access_url: str,
+    ) -> dict:
+        item = self.get_radiography_by_id(item_id)
+        if not item.image_url:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="This radiography does not have an image",
+            )
+
+        token_data = generate_radiography_image_token(image_id=item.id, user=user)
+        token_data["image_access_url"] = (
+            f"{image_access_url}?token={token_data['access_token']}"
+        )
+        return token_data
+
+    def get_signed_image_access(
+        self,
+        item_id: int,
+        token: str,
+        user: UserResponse,
+    ) -> dict:
+        item = self.get_radiography_by_id(item_id)
+        if not item.image_url:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="This radiography does not have an image",
+            )
+
+        token_payload = validate_radiography_image_token(
+            token=token,
+            image_id=item.id,
+            user=user,
+        )
+        signed_image_data = generate_signed_image_url(item.image_url)
+
+        return {
+            "image_id": item.id,
+            "signed_url": signed_image_data["signed_url"],
+            "expires_at": signed_image_data["expires_at"],
+            "expires_in_seconds": signed_image_data["expires_in_seconds"],
+            "token_subject_google_id": token_payload["google_id"],
+        }
 
     def update_radiography(self, item_id: int, data: dict):
         item = self.repository.get_by_id(item_id)

@@ -173,6 +173,54 @@ class RadiographyListResponse(BaseModel):
     )
 
 
+class RadiographyImageTokenResponse(BaseModel):
+    image_id: int = Field(..., description="Radiography image identifier")
+    access_token: str = Field(..., description="Temporary JWT used to request the signed image URL")
+    token_type: str = Field(..., description="Bearer token type")
+    expires_in_minutes: int = Field(..., description="Token lifetime in minutes")
+    expires_at: datetime = Field(..., description="Token expiration timestamp in UTC")
+    image_access_url: str = Field(
+        ...,
+        description="API endpoint that validates the token and returns a signed image URL",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "image_id": 1,
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_type": "bearer",
+                "expires_in_minutes": 1,
+                "expires_at": "2026-04-17T06:35:00Z",
+                "image_access_url": "http://127.0.0.1:8000/api/v1/radiography/1/image-access?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            }
+        }
+    )
+
+
+class SignedImageUrlResponse(BaseModel):
+    image_id: int = Field(..., description="Radiography image identifier")
+    signed_url: str = Field(..., description="Temporary signed Cloudinary URL")
+    expires_at: datetime = Field(..., description="Signed URL expiration timestamp in UTC")
+    expires_in_seconds: int = Field(..., description="Signed URL lifetime in seconds")
+    token_subject_google_id: str = Field(
+        ...,
+        description="Authenticated user identifier encoded in the image token",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "image_id": 1,
+                "signed_url": "https://res.cloudinary.com/demo/image/authenticated/s--signature--/v1234567890/radiographies/example.jpg",
+                "expires_at": "2026-04-17T06:31:00Z",
+                "expires_in_seconds": 60,
+                "token_subject_google_id": "123456789",
+            }
+        }
+    )
+
+
 class MessageResponse(BaseModel):
     message: str = Field(
         ...,
