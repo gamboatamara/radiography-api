@@ -1,5 +1,11 @@
-from sqlalchemy import Column, Date, DateTime, Integer, String, func
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, func, text
 from app.db.database import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Radiography(Base):
@@ -11,4 +17,16 @@ class Radiography(Base):
     clinical_description = Column(String(255), nullable=False)
     study_date = Column(Date, nullable=False)
     image_url = Column(String(255), nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+    is_public = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
