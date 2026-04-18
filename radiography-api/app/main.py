@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 
-from app.db.database import Base, engine
+from app.core.config import settings
 from app.routers.auth_router import router as auth_router
 from app.routers.radiography_router import router as radiography_router
 
@@ -14,13 +14,12 @@ GOOGLE_LOGIN_TEST_FILE = PROJECT_ROOT / "google_login_test.html"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("Database initialized successfully")
-    except Exception as e:
-        print("Database initialization failed:", e)
-    
+    # Schema management is handled externally via Alembic migrations.
+    # Run: alembic upgrade head
+    print(
+        "Startup ready: expecting database schema to be migrated via Alembic"
+    )
+
     yield
 
     print("Application shutting down")
@@ -51,7 +50,11 @@ def root():
     "/google-login-test",
     tags=["System"],
     summary="Google login test page",
-    description="Serve a simple page to test Google Sign-In and retrieve an ID token"
+    description=(
+        "Serve a simple page to test Google Sign-In and retrieve an ID token"
+    ),
 )
 def google_login_test():
-    return FileResponse(GOOGLE_LOGIN_TEST_FILE)
+    html = GOOGLE_LOGIN_TEST_FILE.read_text(encoding="utf-8")
+    html = html.replace("__GOOGLE_CLIENT_ID__", settings.GOOGLE_CLIENT_ID)
+    return HTMLResponse(content=html)

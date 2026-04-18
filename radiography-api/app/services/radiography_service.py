@@ -132,8 +132,10 @@ class RadiographyService:
                 detail="Radiography image not found",
             )
 
-        expires_in_minutes = 5
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes)
+        expires_in_minutes = settings.IMAGE_ACCESS_TOKEN_EXPIRE_MINUTES
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            minutes=expires_in_minutes
+        )
 
         payload = {
             "sub": user.google_id,
@@ -145,7 +147,7 @@ class RadiographyService:
         access_token = jwt.encode(
             payload,
             settings.AUTH_TOKEN_KEY,
-            algorithm="HS256",
+            algorithm=settings.JWT_ALGORITHM,
         )
 
         return RadiographyImageTokenResponse(
@@ -180,7 +182,7 @@ class RadiographyService:
             payload = jwt.decode(
                 token,
                 settings.AUTH_TOKEN_KEY,
-                algorithms=["HS256"],
+                algorithms=[settings.JWT_ALGORITHM],
             )
         except JWTError:
             raise HTTPException(
@@ -219,7 +221,7 @@ class RadiographyService:
 
         try:
             upload_index = path_parts.index("upload")
-            public_id_with_ext = "/".join(path_parts[upload_index + 2 :])
+            public_id_with_ext = "/".join(path_parts[upload_index + 2:])
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -233,7 +235,9 @@ class RadiographyService:
 
         delivery_type = "upload"
 
-        data_to_sign = f"{public_id}:{delivery_type}:{exp}:{settings.AUTH_TOKEN_KEY}"
+        data_to_sign = (
+            f"{public_id}:{delivery_type}:{exp}:{settings.AUTH_TOKEN_KEY}"
+        )
         sig = hmac.new(
             settings.AUTH_TOKEN_KEY.encode("utf-8"),
             data_to_sign.encode("utf-8"),

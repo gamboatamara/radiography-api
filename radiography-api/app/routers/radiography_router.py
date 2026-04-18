@@ -30,6 +30,7 @@ from app.schemas.auth_schema import UserResponse
 from app.repositories.radiography_repository import RadiographyRepository
 from app.services.radiography_service import RadiographyService
 from app.db.session import get_db
+from app.core.config import settings
 from app.core.security import get_current_user
 from app.services.cloudinary_service import upload_image
 
@@ -138,8 +139,6 @@ def serve_secure_image(
             status_code=403,
             detail="Image URL has expired. Please request a new access token."
         )
-
-    from app.core.config import settings
 
     data_to_sign = f"{public_id}:{delivery_type}:{exp}:{settings.AUTH_TOKEN_KEY}"
     expected_sig = hmac.new(

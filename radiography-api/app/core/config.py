@@ -1,25 +1,44 @@
-from pydantic_settings import BaseSettings
-
-SECRET_KEY = "radiography-super-secret-key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 7
-ACCESS_TOKEN_TYPE = "access"
-IMAGE_ACCESS_TOKEN_EXPIRE_MINUTES = 5
-IMAGE_ACCESS_TOKEN_TYPE = "image_access"
-GOOGLE_CLIENT_ID = "96697228689-qrn2tcmbn2fvhqfe3rv0ni3obsi9g1m4.apps.googleusercontent.com"
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "sqlite:///./radiography.db"
-    CLOUDINARY_CLOUD_NAME: str = ""
-    CLOUDINARY_API_KEY: str = ""
-    CLOUDINARY_API_SECRET: str = ""
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
+    APP_ENV: str = "local"
+    DATABASE_URL: str | None = None
+    LOCAL_DATABASE_URL: str = "sqlite:///./radiography.db"
+    PRODUCTION_DATABASE_URL: str = "sqlite:///./temp/radiography.db"
+
+    SECRET_KEY: str
+    AUTH_TOKEN_KEY: str
+    GOOGLE_CLIENT_ID: str
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
+
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 7
+    ACCESS_TOKEN_TYPE: str = "access"
+    IMAGE_ACCESS_TOKEN_EXPIRE_MINUTES: int = 5
+    IMAGE_ACCESS_TOKEN_TYPE: str = "image_access"
+
     MAX_FILE_SIZE: int = 5 * 1024 * 1024
-    AUTH_TOKEN_KEY: str = ""
     SIGNED_IMAGE_URL_EXPIRE_SECONDS: int = 120
 
-    class Config:
-        env_file = ".env"
+    @property
+    def resolved_database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+
+        if self.APP_ENV.lower() == "production":
+            return self.PRODUCTION_DATABASE_URL
+
+        return self.LOCAL_DATABASE_URL
 
 
 settings = Settings()

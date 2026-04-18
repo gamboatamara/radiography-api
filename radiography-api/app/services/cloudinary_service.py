@@ -10,15 +10,40 @@ from fastapi import UploadFile, HTTPException
 from app.core.config import settings
 from app.core.file_validators import validate_image_file
 
-cloudinary.config(
-    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-    api_key=settings.CLOUDINARY_API_KEY,
-    api_secret=settings.CLOUDINARY_API_SECRET,
-    secure=True
-)
+_cloudinary_configured = False
+
+
+def _configure_cloudinary() -> None:
+    global _cloudinary_configured
+
+    if _cloudinary_configured:
+        return
+
+    missing = []
+    if not settings.CLOUDINARY_CLOUD_NAME.strip():
+        missing.append("CLOUDINARY_CLOUD_NAME")
+    if not settings.CLOUDINARY_API_KEY.strip():
+        missing.append("CLOUDINARY_API_KEY")
+    if not settings.CLOUDINARY_API_SECRET.strip():
+        missing.append("CLOUDINARY_API_SECRET")
+
+    if missing:
+        raise HTTPException(
+            status_code=500,
+            detail="Cloudinary credentials are not configured",
+        )
+
+    cloudinary.config(
+        cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+        api_key=settings.CLOUDINARY_API_KEY,
+        api_secret=settings.CLOUDINARY_API_SECRET,
+        secure=True,
+    )
+    _cloudinary_configured = True
 
 
 def upload_image(file: UploadFile) -> str:
+    _configure_cloudinary()
     validate_image_file(file)
 
     try:
@@ -28,17 +53,17 @@ def upload_image(file: UploadFile) -> str:
         if not url:
             raise HTTPException(
                 status_code=500,
-                detail="Could not obtain the uploaded image URL"
+                detail="Could not obtain the uploaded image URL",
             )
 
         return url
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500,
-            detail=f"Error uploading image to Cloudinary: {str(e)}"
+            detail="Error uploading image to Cloudinary",
         )
 
 
@@ -49,7 +74,7 @@ def generate_signed_image_url(image_url: str, user_id: str) -> str:
     sig = hmac.new(
         settings.AUTH_TOKEN_KEY.encode(),
         payload.encode(),
-        hashlib.sha256
+        hashlib.sha256,
     ).hexdigest()
 
     query = urlencode({
@@ -76,7 +101,7 @@ def validate_signed_image_url(
     expected_sig = hmac.new(
         settings.AUTH_TOKEN_KEY.encode(),
         payload.encode(),
-        hashlib.sha256
+        hashlib.sha256,
     ).hexdigest()
 
     if not hmac.compare_digest(sig, expected_sig):

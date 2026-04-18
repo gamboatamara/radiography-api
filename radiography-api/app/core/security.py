@@ -4,27 +4,28 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from app.core.config import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    ACCESS_TOKEN_TYPE,
-    ALGORITHM,
-    IMAGE_ACCESS_TOKEN_EXPIRE_MINUTES,
-    IMAGE_ACCESS_TOKEN_TYPE,
-    SECRET_KEY,
-)
+from app.core.config import settings
 from app.schemas.auth_schema import UserResponse
 
 
 bearer_scheme = HTTPBearer()
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    data: dict,
+    expires_delta: timedelta | None = None,
+) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta
+        or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire, "token_type": ACCESS_TOKEN_TYPE})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    to_encode.update({"exp": expire, "token_type": settings.ACCESS_TOKEN_TYPE})
+    return jwt.encode(
+        to_encode,
+        settings.SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
 
 
 def create_image_access_token(
@@ -34,28 +35,37 @@ def create_image_access_token(
     expires_delta: timedelta | None = None,
 ) -> str:
     expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=IMAGE_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta
+        or timedelta(minutes=settings.IMAGE_ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     payload = {
         "exp": expire,
-        "token_type": IMAGE_ACCESS_TOKEN_TYPE,
+        "token_type": settings.IMAGE_ACCESS_TOKEN_TYPE,
         "image_id": image_id,
         "email": user.email,
         "name": user.name,
         "google_id": user.google_id,
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        payload,
+        settings.SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
 
 
 def verify_token(token: str) -> UserResponse:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
         token_type = payload.get("token_type")
         email = payload.get("email")
         name = payload.get("name")
         google_id = payload.get("google_id")
 
-        if token_type != ACCESS_TOKEN_TYPE:
+        if token_type != settings.ACCESS_TOKEN_TYPE:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type",
@@ -83,12 +93,16 @@ def verify_image_access_token(
     user: UserResponse,
 ) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
         token_type = payload.get("token_type")
         token_image_id = payload.get("image_id")
         google_id = payload.get("google_id")
 
-        if token_type != IMAGE_ACCESS_TOKEN_TYPE:
+        if token_type != settings.IMAGE_ACCESS_TOKEN_TYPE:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid image token type",
