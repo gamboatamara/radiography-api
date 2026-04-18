@@ -1,9 +1,15 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from app.db.database import Base, engine
 from app.routers.auth_router import router as auth_router
 from app.routers.radiography_router import router as radiography_router
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+GOOGLE_LOGIN_TEST_FILE = PROJECT_ROOT / "google_login_test.html"
 
 
 @asynccontextmanager
@@ -39,3 +45,13 @@ app.include_router(radiography_router, prefix="/api/v1/radiography")
 )
 def root():
     return {"message": "API is running"}
+
+
+@app.get(
+    "/google-login-test",
+    tags=["System"],
+    summary="Google login test page",
+    description="Serve a simple page to test Google Sign-In and retrieve an ID token"
+)
+def google_login_test():
+    return FileResponse(GOOGLE_LOGIN_TEST_FILE)
