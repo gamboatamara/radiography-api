@@ -106,40 +106,40 @@ def validate_radiography_image_token(
     return verify_image_access_token(token=token, image_id=image_id, user=user)
 
 #This is a mock implementation for testing purposes. In a real application, you would verify the token with Google's API.
-# def login_with_google_token(token: str) -> TokenResponse:
-#     if token == "mock-token":
-#         user = UserResponse(
-#             email="test@gmail.com",
-#             name="Test User",
-#             google_id="123456789"
-#         )
+def login_with_google_token(token: str) -> TokenResponse:
+    if token == "mock-token":
+        user = UserResponse(
+            email="test@gmail.com",
+            name="Test User",
+            google_id="123456789"
+        )
 
-#         access_token = create_access_token(
-#             data={
-#                 "email": user.email,
-#                 "name": user.name,
-#                 "google_id": user.google_id,
-#             }
-#         )
+        access_token = create_access_token(
+            data={
+                "email": user.email,
+                "name": user.name,
+                "google_id": user.google_id,
+            }
+        )
 
-#         return TokenResponse(
-#             access_token=access_token,
-#             token_type="bearer",
-#             user=user,
-#         )
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=user,
+        )
 
-#     user = verify_google_token(token)
+    user = verify_google_token(token)
 
-#     access_token = create_access_token(
-#         data={
-#             "email": user.email,
-#             "name": user.name,
-#             "google_id": user.google_id,
-#         }
-#     )
+    access_token = create_access_token(
+        data={
+            "email": user.email,
+            "name": user.name,
+            "google_id": user.google_id,
+        }
+    )
 
-#     return TokenResponse(
-#         access_token=access_token,
-#         token_type="bearer",
-#         user=user,
-#     )
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=user,
+    )

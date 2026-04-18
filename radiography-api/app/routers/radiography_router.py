@@ -1,5 +1,9 @@
 from datetime import date, datetime, timezone
+from urllib.parse import unquote
 
+import cloudinary.utils
+import hashlib
+import hmac
 from fastapi import (
     APIRouter,
     Query,
@@ -14,10 +18,6 @@ from fastapi import (
 )
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from urllib.parse import unquote
-import hmac
-import hashlib
-import cloudinary.utils
 
 from app.schemas.radiography_schema import (
     RadiographyResponse,
@@ -41,7 +41,7 @@ router = APIRouter(tags=["Radiography"])
     response_model=RadiographyResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create radiography record with image",
-    description="Creates a new radiography record, uploads the image to Cloudinary, and stores the public URL along with the patient data.",
+    description="Creates a new radiography record, uploads the image to Cloudinary, and stores the image reference along with the patient data.",
     responses={
         201: {"description": "Radiography record created successfully"},
         400: {"description": "Invalid data or unsupported file type"},
@@ -59,14 +59,14 @@ def create_radiography(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    upload_result = upload_image(file)
+    image_url = upload_image(file)
 
     data = {
         "full_name": full_name,
         "patient_code": patient_code,
         "clinical_description": clinical_description,
         "study_date": study_date,
-        "image_url": upload_result["image_url"],
+        "image_url": image_url,
     }
 
     repository = RadiographyRepository(db)
@@ -113,11 +113,12 @@ def list_radiographies(
         order=order,
     )
 
+
 @router.get(
     "/image-secure",
     include_in_schema=False,
     summary="Serve secure image with expiration validation",
-    description="Validates expiration and signature before serving image. No authentication required (protected by HMAC signature).",
+    description="Validates expiration and signature before serving image. No authentication required here because the URL itself is signed and temporary.",
     responses={
         200: {"description": "Redirects to Cloudinary image"},
         403: {"description": "URL expired or invalid signature"},
@@ -129,13 +130,6 @@ def serve_secure_image(
     exp: int = Query(..., description="Expiration timestamp"),
     sig: str = Query(..., description="HMAC signature"),
 ):
-    """
-    Valida expiración y firma antes de servir imagen
-    
-    Si válido → redirige a Cloudinary
-    Si expirado o firma inválida → error 403
-    """
-    
     public_id = unquote(public_id)
 
     now = int(datetime.now(timezone.utc).timestamp())
@@ -144,22 +138,22 @@ def serve_secure_image(
             status_code=403,
             detail="Image URL has expired. Please request a new access token."
         )
-    
+
     from app.core.config import settings
-    
-    data_to_sign = f"{public_id}:{exp}:{settings.AUTH_TOKEN_KEY}"
+
+    data_to_sign = f"{public_id}:{delivery_type}:{exp}:{settings.AUTH_TOKEN_KEY}"
     expected_sig = hmac.new(
-        settings.AUTH_TOKEN_KEY.encode('utf-8'),
-        data_to_sign.encode('utf-8'),
+        settings.AUTH_TOKEN_KEY.encode("utf-8"),
+        data_to_sign.encode("utf-8"),
         hashlib.sha256
     ).hexdigest()[:32]
-    
+
     if not hmac.compare_digest(expected_sig, sig):
         raise HTTPException(
             status_code=403,
             detail="Invalid signature"
         )
-    
+
     cloudinary_url, _ = cloudinary.utils.cloudinary_url(
         public_id,
         resource_type="image",
@@ -167,7 +161,7 @@ def serve_secure_image(
         sign_url=True,
         secure=True
     )
-    
+
     return RedirectResponse(url=cloudinary_url)
 
 
@@ -175,7 +169,7 @@ def serve_secure_image(
     "/{item_id}",
     response_model=RadiographyResponse,
     summary="Get radiography record by ID",
-    description="Retrieves a specific radiography record using its unique identifier.",
+    description="Retrieves a specific radiography record using its unique identifier. The image is not exposed directly; use the secure image endpoints instead.",
     responses={
         200: {"description": "Radiography record retrieved successfully"},
         401: {"description": "Unauthorized"},
@@ -225,7 +219,7 @@ def create_radiography_image_token(
     "/{item_id}/image-access",
     response_model=SignedImageUrlResponse,
     summary="Validate image token and return signed URL",
-    description="Validates the image JWT and returns a temporary signed Cloudinary URL for the requested radiography.",
+    description="Validates the image JWT and returns a temporary signed image access URL for the requested radiography.",
     responses={
         200: {"description": "Signed image URL generated successfully"},
         401: {"description": "Invalid or expired image token"},
@@ -282,8 +276,7 @@ def update_radiography(
     if study_date is not None:
         data["study_date"] = study_date
     if file is not None:
-        upload_result = upload_image(file)
-        data["image_url"] = upload_result["image_url"]
+        data["image_url"] = upload_image(file)
 
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
@@ -309,5 +302,3 @@ def delete_radiography(
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
     return service.delete_radiography(item_id)
-
-
