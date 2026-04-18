@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
 
-
 SECRET_KEY = "radiography-super-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 7
@@ -16,7 +15,8 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
     MAX_FILE_SIZE: int = 5 * 1024 * 1024
-    SIGNED_IMAGE_URL_EXPIRE_SECONDS: int = 60
+    AUTH_TOKEN_KEY: str = ""
+    SIGNED_IMAGE_URL_EXPIRE_SECONDS: int = 120
 
     class Config:
         env_file = ".env"
