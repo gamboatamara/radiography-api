@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from urllib.parse import unquote
 
 import cloudinary.utils
@@ -9,7 +9,6 @@ from fastapi import (
     Query,
     Depends,
     status,
-    Form,
     UploadFile,
     File,
     Path,
@@ -20,6 +19,8 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.schemas.radiography_schema import (
+    RadiographyCreate,
+    RadiographyUpdate,
     RadiographyResponse,
     RadiographyListResponse,
     MessageResponse,
@@ -32,7 +33,7 @@ from app.services.radiography_service import RadiographyService
 from app.db.session import get_db
 from app.core.config import settings
 from app.core.security import get_current_user
-from app.services.cloudinary_service import upload_image
+from app.services.cloudinary_service import upload_image, _configure_cloudinary
 
 router = APIRouter(tags=["Radiography"])
 
@@ -52,27 +53,16 @@ router = APIRouter(tags=["Radiography"])
     },
 )
 def create_radiography(
-    full_name: str = Form(..., description="Full name of the patient"),
-    patient_code: str = Form(..., description="Patient code or medical record number"),
-    clinical_description: str = Form(..., description="Brief clinical description"),
-    study_date: date = Form(..., description="Radiography study date"),
+    data: RadiographyCreate = Depends(RadiographyCreate.as_form),
     file: UploadFile = File(..., description="Radiography image file (JPG or PNG)"),
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
     image_url = upload_image(file)
 
-    data = {
-        "full_name": full_name,
-        "patient_code": patient_code,
-        "clinical_description": clinical_description,
-        "study_date": study_date,
-        "image_url": image_url,
-    }
-
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
-    return service.create_radiography(data)
+    return service.create_radiography(data=data, image_url=image_url)
 
 
 @router.get(
@@ -153,6 +143,8 @@ def serve_secure_image(
             detail="Invalid signature"
         )
 
+    _configure_cloudinary()
+    
     cloudinary_url, _ = cloudinary.utils.cloudinary_url(
         public_id,
         resource_type="image",
@@ -256,30 +248,20 @@ def get_radiography_signed_image_url(
 )
 def update_radiography(
     item_id: int = Path(..., ge=1, description="Radiography record ID"),
-    full_name: str | None = Form(None, description="Updated full name"),
-    patient_code: str | None = Form(None, description="Updated patient code"),
-    clinical_description: str | None = Form(None, description="Updated clinical description"),
-    study_date: date | None = Form(None, description="Updated study date"),
+    data: RadiographyUpdate = Depends(RadiographyUpdate.as_form),
     file: UploadFile | None = File(None, description="New radiography image (optional)"),
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    data = {}
-
-    if full_name is not None:
-        data["full_name"] = full_name
-    if patient_code is not None:
-        data["patient_code"] = patient_code
-    if clinical_description is not None:
-        data["clinical_description"] = clinical_description
-    if study_date is not None:
-        data["study_date"] = study_date
-    if file is not None:
-        data["image_url"] = upload_image(file)
+    image_url = upload_image(file) if file is not None else None
 
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
-    return service.update_radiography(item_id, data)
+    return service.update_radiography(
+        item_id=item_id,
+        data=data,
+        image_url=image_url,
+    )
 
 
 @router.delete(

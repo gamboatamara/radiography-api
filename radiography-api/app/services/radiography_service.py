@@ -10,6 +10,8 @@ from jose import JWTError, jwt
 from app.repositories.radiography_repository import RadiographyRepository
 from app.schemas.auth_schema import UserResponse
 from app.schemas.radiography_schema import (
+    RadiographyCreate,
+    RadiographyUpdate,
     RadiographyImageTokenResponse,
     SignedImageUrlResponse,
 )
@@ -20,15 +22,17 @@ class RadiographyService:
     def __init__(self, repository: RadiographyRepository):
         self.repository = repository
 
-    def create_radiography(self, data: dict):
-        existing = self.repository.get_by_patient_code(data["patient_code"])
+    def create_radiography(self, data: RadiographyCreate, image_url: str):
+        existing = self.repository.get_by_patient_code(data.patient_code)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="A record with this patient_code already exists",
             )
 
-        return self.repository.create(data)
+        payload = data.model_dump()
+        payload["image_url"] = image_url
+        return self.repository.create(payload)
 
     def list_radiographies(
         self,
@@ -84,7 +88,12 @@ class RadiographyService:
             )
         return item
 
-    def update_radiography(self, item_id: int, data: dict):
+    def update_radiography(
+        self,
+        item_id: int,
+        data: RadiographyUpdate,
+        image_url: str | None = None,
+    ):
         item = self.repository.get_by_id(item_id)
         if not item:
             raise HTTPException(
@@ -92,15 +101,20 @@ class RadiographyService:
                 detail="Record not found",
             )
 
-        if "patient_code" in data and data["patient_code"] != item.patient_code:
-            existing = self.repository.get_by_patient_code(data["patient_code"])
+        update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+
+        if image_url is not None:
+            update_data["image_url"] = image_url
+
+        if "patient_code" in update_data and update_data["patient_code"] != item.patient_code:
+            existing = self.repository.get_by_patient_code(update_data["patient_code"])
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="A record with this patient_code already exists",
                 )
 
-        updated = self.repository.update(item_id, data)
+        updated = self.repository.update(item_id, update_data)
         return updated
 
     def delete_radiography(self, item_id: int) -> dict:

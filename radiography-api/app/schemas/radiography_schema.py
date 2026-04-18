@@ -1,13 +1,14 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Annotated, Optional
 
+from fastapi import Form
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class RadiographyBase(BaseModel):
     full_name: str = Field(
         ...,
-        min_length=3,
+        min_length=1,
         max_length=150,
         description="Full name of the patient"
     )
@@ -45,6 +46,33 @@ class RadiographyBase(BaseModel):
 
 
 class RadiographyCreate(RadiographyBase):
+    @classmethod
+    def as_form(
+        cls,
+        full_name: Annotated[
+            str,
+            Form(description="Full name of the patient"),
+        ],
+        patient_code: Annotated[
+            str,
+            Form(description="Patient identification code or medical record number"),
+        ],
+        clinical_description: Annotated[
+            str,
+            Form(description="Brief clinical description of the radiography study"),
+        ],
+        study_date: Annotated[
+            date,
+            Form(description="Date when the radiography study was performed"),
+        ],
+    ) -> "RadiographyCreate":
+        return cls(
+            full_name=full_name,
+            patient_code=patient_code,
+            clinical_description=clinical_description,
+            study_date=study_date,
+        )
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -60,19 +88,16 @@ class RadiographyCreate(RadiographyBase):
 class RadiographyUpdate(BaseModel):
     full_name: Optional[str] = Field(
         None,
-        min_length=3,
         max_length=150,
         description="Updated full name of the patient"
     )
     patient_code: Optional[str] = Field(
         None,
-        min_length=1,
         max_length=50,
         description="Updated patient identification code or medical record number"
     )
     clinical_description: Optional[str] = Field(
         None,
-        min_length=5,
         max_length=255,
         description="Updated brief clinical description"
     )
@@ -82,10 +107,36 @@ class RadiographyUpdate(BaseModel):
     )
     image_url: Optional[str] = Field(
         None,
-        min_length=1,
         max_length=255,
         description="Updated image URL"
     )
+
+    @classmethod
+    def as_form(
+        cls,
+        full_name: Annotated[
+            Optional[str],
+            Form(description="Updated full name of the patient"),
+        ] = None,
+        patient_code: Annotated[
+            Optional[str],
+            Form(description="Updated patient identification code or medical record number"),
+        ] = None,
+        clinical_description: Annotated[
+            Optional[str],
+            Form(description="Updated brief clinical description"),
+        ] = None,
+        study_date: Annotated[
+            Optional[date],
+            Form(description="Updated date of the radiography study"),
+        ] = None,
+    ) -> "RadiographyUpdate":
+        return cls(
+            full_name=full_name,
+            patient_code=patient_code,
+            clinical_description=clinical_description,
+            study_date=study_date,
+        )
 
     @field_validator("full_name", "patient_code", "clinical_description")
     @classmethod
