@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import (
     APIRouter,
@@ -10,8 +10,14 @@ from fastapi import (
     File,
     Path,
     Request,
+    HTTPException,
 )
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from urllib.parse import unquote
+import hmac
+import hashlib
+import cloudinary.utils
 
 from app.schemas.radiography_schema import (
     RadiographyResponse,
@@ -106,6 +112,63 @@ def list_radiographies(
         sort_by=sort_by,
         order=order,
     )
+
+@router.get(
+    "/image-secure",
+    include_in_schema=False,
+    summary="Serve secure image with expiration validation",
+    description="Validates expiration and signature before serving image. No authentication required (protected by HMAC signature).",
+    responses={
+        200: {"description": "Redirects to Cloudinary image"},
+        403: {"description": "URL expired or invalid signature"},
+    },
+)
+def serve_secure_image(
+    public_id: str = Query(..., description="Cloudinary public_id"),
+    delivery_type: str = Query(..., description="Delivery type (upload/authenticated)"),
+    exp: int = Query(..., description="Expiration timestamp"),
+    sig: str = Query(..., description="HMAC signature"),
+):
+    """
+    Valida expiración y firma antes de servir imagen
+    
+    Si válido → redirige a Cloudinary
+    Si expirado o firma inválida → error 403
+    """
+    
+    public_id = unquote(public_id)
+
+    now = int(datetime.now(timezone.utc).timestamp())
+    if now > exp:
+        raise HTTPException(
+            status_code=403,
+            detail="Image URL has expired. Please request a new access token."
+        )
+    
+    from app.core.config import settings
+    
+    data_to_sign = f"{public_id}:{exp}:{settings.AUTH_TOKEN_KEY}"
+    expected_sig = hmac.new(
+        settings.AUTH_TOKEN_KEY.encode('utf-8'),
+        data_to_sign.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()[:32]
+    
+    if not hmac.compare_digest(expected_sig, sig):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid signature"
+        )
+    
+    cloudinary_url, _ = cloudinary.utils.cloudinary_url(
+        public_id,
+        resource_type="image",
+        type=delivery_type,
+        sign_url=True,
+        secure=True
+    )
+    
+    return RedirectResponse(url=cloudinary_url)
 
 
 @router.get(
@@ -245,4 +308,6 @@ def delete_radiography(
 ):
     repository = RadiographyRepository(db)
     service = RadiographyService(repository)
-    return service.delete_radiography(item_id)  
+    return service.delete_radiography(item_id)
+
+

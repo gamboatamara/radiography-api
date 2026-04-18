@@ -9,6 +9,9 @@ from fastapi import UploadFile, HTTPException
 from app.core.config import settings
 from app.core.file_validators import validate_image_file
 
+import hmac
+import hashlib
+
 cloudinary.config(
     cloud_name=settings.CLOUDINARY_CLOUD_NAME,
     api_key=settings.CLOUDINARY_API_KEY,
@@ -38,6 +41,9 @@ def upload_image(file: UploadFile) -> dict:
             file.file,
             resource_type="image",
             type="authenticated",
+            access_control=[{
+                "access_type": "token"
+            }]
         )
         url = result.get("secure_url")
         public_id = result.get("public_id")
@@ -111,24 +117,114 @@ def _extract_cloudinary_asset_data(image_url: str) -> tuple[str, str]:
 
 
 def generate_signed_image_url(image_url: str) -> dict:
+    """
+    Genera URL firmada que apunta a TU endpoint de validación
+    """
     _ensure_cloudinary_configured()
 
     public_id, delivery_type = _extract_cloudinary_asset_data(image_url)
+    
     expires_at = datetime.now(timezone.utc) + timedelta(
         seconds=settings.SIGNED_IMAGE_URL_EXPIRE_SECONDS
     )
-    signed_url, _ = cloudinary.utils.cloudinary_url(
-        public_id,
-        resource_type="image",
-        type=delivery_type,
-        secure=True,
-        sign_url=True,
-        expires_at=int(expires_at.timestamp()),
-    )
+    expiration_timestamp = int(expires_at.timestamp())
+
+    data_to_sign = f"{public_id}:{expiration_timestamp}:{settings.AUTH_TOKEN_KEY}"
+    signature = hmac.new(
+        settings.AUTH_TOKEN_KEY.encode('utf-8'),
+        data_to_sign.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()[:32]
+    
+    from urllib.parse import quote
+    base_url = "http://127.0.0.1:8000"
+    validation_url = f"{base_url}/api/v1/radiography/image-secure?public_id={quote(public_id)}&delivery_type={delivery_type}&exp={expiration_timestamp}&sig={signature}"
 
     return {
-        "signed_url": signed_url,
+        "signed_url": validation_url,
         "expires_at": expires_at,
         "expires_in_seconds": settings.SIGNED_IMAGE_URL_EXPIRE_SECONDS,
         "cloudinary_public_id": public_id,
     }
+
+
+def verify_signed_url(signed_url: str) -> dict:
+    """
+    Verifica si una URL firmada es válida y no ha expirado
+    """
+    from urllib.parse import parse_qs
+    
+    try:
+        parsed = urlparse(signed_url)
+        params = parse_qs(parsed.query)
+        
+        exp_list = params.get('exp', [])
+        sig_list = params.get('sig', [])
+        
+        if not exp_list or not sig_list:
+            return {
+                "valid": False,
+                "error": "Missing expiration or signature parameters"
+            }
+        
+        exp = exp_list[0]
+        sig = sig_list[0]
+        
+        try:
+            expiration_timestamp = int(exp)
+        except ValueError:
+            return {
+                "valid": False,
+                "error": "Invalid expiration timestamp"
+            }
+        
+        now = int(datetime.now(timezone.utc).timestamp())
+        
+        if now > expiration_timestamp:
+            return {
+                "valid": False,
+                "error": f"URL has expired. Current time: {now}, expiration: {expiration_timestamp}"
+            }
+
+        base_url = signed_url.split('?')[0]
+        
+        try:
+            public_id, delivery_type = _extract_cloudinary_asset_data(base_url)
+        except Exception as e:
+            return {
+                "valid": False,
+                "error": f"Could not extract public_id: {str(e)}"
+            }
+        
+        data_to_sign = f"{public_id}:{exp}:{settings.AUTH_TOKEN_KEY}"
+        expected_sig = hmac.new(
+            settings.AUTH_TOKEN_KEY.encode('utf-8'),
+            data_to_sign.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()[:32]
+        
+        if not hmac.compare_digest(expected_sig, sig):
+            return {
+                "valid": False,
+                "error": "Invalid signature - URL may have been tampered with"
+            }
+        
+        cloudinary_url, _ = cloudinary.utils.cloudinary_url(
+            public_id,
+            resource_type="image",
+            type=delivery_type,
+            secure=True,
+            sign_url=True
+        )
+        
+        return {
+            "valid": True,
+            "cloudinary_url": cloudinary_url,
+            "public_id": public_id
+        }
+    
+    except Exception as e:
+        return {
+            "valid": False,
+            "error": f"Error validating URL: {str(e)}"
+        }
