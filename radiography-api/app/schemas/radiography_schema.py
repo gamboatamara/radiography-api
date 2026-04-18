@@ -84,7 +84,7 @@ class RadiographyUpdate(BaseModel):
         None,
         min_length=1,
         max_length=255,
-        description="Updated public URL of the radiography image"
+        description="Updated image URL"
     )
 
     @field_validator("full_name", "patient_code", "clinical_description")
@@ -122,12 +122,17 @@ class RadiographyResponse(BaseModel):
     study_date: date = Field(..., description="Date when the radiography study was performed")
     image_url: Optional[str] = Field(
         None,
-        description="Public URL of the radiography image stored in Cloudinary"
+        description="(Hidden) Image is accessed only through secure endpoints"
     )
     created_at: datetime = Field(
         ...,
         description="Date and time when the radiography record was created"
     )
+
+    @field_validator("image_url")
+    @classmethod
+    def hide_image_url(cls, v):
+        return None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -138,7 +143,7 @@ class RadiographyResponse(BaseModel):
                 "patient_code": "PAT-001",
                 "clinical_description": "Fracture in right arm",
                 "study_date": "2026-04-13",
-                "image_url": "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+                "image_url": None,
                 "created_at": "2026-04-13T10:30:00"
             }
         }
@@ -164,7 +169,7 @@ class RadiographyListResponse(BaseModel):
                         "patient_code": "PAT-001",
                         "clinical_description": "Fracture in right arm",
                         "study_date": "2026-04-13",
-                        "image_url": "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+                        "image_url": None,
                         "created_at": "2026-04-13T10:30:00"
                     }
                 ]
@@ -200,7 +205,7 @@ class RadiographyImageTokenResponse(BaseModel):
 
 class SignedImageUrlResponse(BaseModel):
     image_id: int = Field(..., description="Radiography image identifier")
-    signed_url: str = Field(..., description="Temporary signed Cloudinary URL")
+    signed_url: str = Field(..., description="Temporary signed image URL")
     expires_at: datetime = Field(..., description="Signed URL expiration timestamp in UTC")
     expires_in_seconds: int = Field(..., description="Signed URL lifetime in seconds")
     token_subject_google_id: str = Field(
@@ -212,7 +217,7 @@ class SignedImageUrlResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "image_id": 1,
-                "signed_url": "https://res.cloudinary.com/demo/image/authenticated/s--signature--/v1234567890/radiographies/example.jpg",
+                "signed_url": "/api/v1/radiography/image-secure?public_id=radiographies/example&delivery_type=authenticated&exp=1776492463&sig=abcdef123456",
                 "expires_at": "2026-04-17T06:31:00Z",
                 "expires_in_seconds": 60,
                 "token_subject_google_id": "123456789",
