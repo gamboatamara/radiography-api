@@ -30,6 +30,9 @@ class RadiographyRepository:
 
     @classmethod
     def image_is_no_longer_public(cls, item: Radiography) -> bool:
+        if not item.expires_at:
+            return False
+
         return cls._ensure_utc(item.expires_at) <= cls._utc_now()
 
     def _refresh_public_status(self, item: Optional[Radiography]) -> Optional[Radiography]:
@@ -48,8 +51,8 @@ class RadiographyRepository:
         return item
 
     def create(self, data: dict) -> Radiography:
-        created_at = data.get("created_at") or self._utc_now()
-        expires_at = data.get("expires_at") or self.build_public_expiration(created_at)
+        created_at = self._ensure_utc(data.get("created_at") or self._utc_now())
+        expires_at = self.build_public_expiration(created_at)
 
         try:
             new_item = Radiography(
@@ -91,8 +94,14 @@ class RadiographyRepository:
         if not item:
             return None
 
+        if "image_url" in data:
+            refreshed_at = self._utc_now()
+            item.is_public = True
+            item.expires_at = self.build_public_expiration(refreshed_at)
+
         for key, value in data.items():
-            setattr(item, key, value)
+            if key not in ["is_public", "expires_at"]:
+                setattr(item, key, value)
 
         try:
             self.db.commit()

@@ -27,6 +27,6 @@ class Radiography(Base):
         Boolean,
         nullable=False,
         default=True,
-        server_default=text("true"),
+        server_default=text("1"),
     )
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
