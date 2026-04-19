@@ -22,6 +22,54 @@ class RadiographyService:
     def __init__(self, repository: RadiographyRepository):
         self.repository = repository
 
+    @staticmethod
+    def _ensure_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    def _raise_if_image_is_not_publicly_available(self, item) -> None:
+        if not item.is_public:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Radiography image is no longer publicly available",
+            )
+
+        if (
+            item.expires_at
+            and self._ensure_utc(item.expires_at) <= datetime.now(timezone.utc)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Radiography image is no longer publicly available",
+            )
+
+    def _build_signed_url_expiration(self, item) -> tuple[int, datetime]:
+        expires_in_seconds = settings.SIGNED_IMAGE_URL_EXPIRE_SECONDS
+
+        if item.expires_at:
+            remaining_seconds = int(
+                (
+                    self._ensure_utc(item.expires_at)
+                    - datetime.now(timezone.utc)
+                ).total_seconds()
+            )
+            expires_in_seconds = min(
+                expires_in_seconds,
+                max(0, remaining_seconds),
+            )
+
+        if expires_in_seconds <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Radiography image is no longer publicly available",
+            )
+
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            seconds=expires_in_seconds
+        )
+        return expires_in_seconds, expires_at
+
     def create_radiography(self, data: RadiographyCreate, image_url: str):
         existing = self.repository.get_by_patient_code(data.patient_code)
         if existing:
@@ -146,6 +194,8 @@ class RadiographyService:
                 detail="Radiography image not found",
             )
 
+        self._raise_if_image_is_not_publicly_available(item)
+
         expires_in_minutes = settings.IMAGE_ACCESS_TOKEN_EXPIRE_MINUTES
         expires_at = datetime.now(timezone.utc) + timedelta(
             minutes=expires_in_minutes
@@ -199,6 +249,8 @@ class RadiographyService:
                 detail="Radiography image not found",
             )
 
+        self._raise_if_image_is_not_publicly_available(item)
+
         try:
             payload = jwt.decode(
                 token,
@@ -233,8 +285,9 @@ class RadiographyService:
                 detail="Image token is not valid for the current image",
             )
 
-        expires_in_seconds = settings.SIGNED_IMAGE_URL_EXPIRE_SECONDS
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
+        expires_in_seconds, expires_at = self._build_signed_url_expiration(
+            item
+        )
         exp = int(expires_at.timestamp())
 
         parsed = urlparse(item.image_url)
