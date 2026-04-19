@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     IMAGE_ACCESS_TOKEN_TYPE: str = "image_access"
 
     MAX_FILE_SIZE: int = 5 * 1024 * 1024
-    SIGNED_IMAGE_URL_EXPIRE_SECONDS: int = 120
+    SIGNED_IMAGE_URL_EXPIRE_SECONDS: int = 300
 
     @property
     def resolved_database_url(self) -> str:

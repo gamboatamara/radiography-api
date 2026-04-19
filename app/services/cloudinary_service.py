@@ -84,7 +84,8 @@ def generate_signed_image_url(image_url: str, user_id: str) -> str:
         "sig": sig,
     })
 
-    return f"/api/v1/radiography/image-secure?{query}"
+    base_url = "https://radiography-api-hf8w.onrender.com"
+    return f"{base_url}/api/v1/radiography/image-secure?{query}"
 
 
 def validate_signed_image_url(
