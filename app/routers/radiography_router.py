@@ -186,6 +186,7 @@ def get_radiography(
         200: {"description": "Image token generated successfully"},
         401: {"description": "Unauthorized"},
         404: {"description": "Radiography record or image not found"},
+        403: {"description": "Radiography image is no longer publicly available"},
     },
 )
 def create_radiography_image_token(
@@ -215,6 +216,7 @@ def create_radiography_image_token(
         200: {"description": "Signed image URL generated successfully"},
         401: {"description": "Invalid or expired image token"},
         404: {"description": "Radiography record or image not found"},
+        403: {"description": "Radiography image is no longer publicly available"},
     },
 )
 def get_radiography_signed_image_url(
