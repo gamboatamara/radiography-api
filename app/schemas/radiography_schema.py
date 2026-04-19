@@ -248,7 +248,7 @@ class RadiographyImageTokenResponse(BaseModel):
                 "token_type": "bearer",
                 "expires_in_minutes": 1,
                 "expires_at": "2026-04-17T06:35:00Z",
-                "image_access_url": "http://127.0.0.1:8000/api/v1/radiography/1/image-access?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "image_access_url": "https://radiography-api-hf8w.onrender.com/api/v1/radiography/1/image-access?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
             }
         }
     )
@@ -268,7 +268,7 @@ class SignedImageUrlResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "image_id": 1,
-                "signed_url": "/api/v1/radiography/image-secure?public_id=radiographies/example&delivery_type=authenticated&exp=1776492463&sig=abcdef123456",
+                "signed_url": "https://radiography-api-hf8w.onrender.com/api/v1/radiography/image-secure?public_id=radiographies/example&delivery_type=authenticated&exp=1776492463&sig=abcdef123456",
                 "expires_at": "2026-04-17T06:31:00Z",
                 "expires_in_seconds": 60,
                 "token_subject_google_id": "123456789",
