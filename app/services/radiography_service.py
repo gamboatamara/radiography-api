@@ -163,6 +163,13 @@ class RadiographyService:
             settings.AUTH_TOKEN_KEY,
             algorithm=settings.JWT_ALGORITHM,
         )
+        
+        from urllib.parse import urlparse
+        parsed_url = urlparse(image_access_url)
+        path_only = parsed_url.path
+        
+        base_url = "https://radiography-api-hf8w.onrender.com"
+        full_access_url = f"{base_url}{path_only}?token={access_token}"
 
         return RadiographyImageTokenResponse(
             image_id=item.id,
@@ -170,7 +177,7 @@ class RadiographyService:
             token_type="bearer",
             expires_in_minutes=expires_in_minutes,
             expires_at=expires_at,
-            image_access_url=f"{image_access_url}?token={access_token}",
+            image_access_url=full_access_url
         )
 
     def get_signed_image_access(
@@ -258,12 +265,13 @@ class RadiographyService:
             hashlib.sha256,
         ).hexdigest()[:32]
 
+        base_url = "https://radiography-api-hf8w.onrender.com"
         signed_url = (
-            f"/api/v1/radiography/image-secure"
-            f"?public_id={public_id}"
-            f"&delivery_type={delivery_type}"
-            f"&exp={exp}"
-            f"&sig={sig}"
+        f"{base_url}/api/v1/radiography/image-secure"
+        f"?public_id={public_id}"
+        f"&delivery_type={delivery_type}"
+        f"&exp={exp}"
+        f"&sig={sig}"
         )
 
         return SignedImageUrlResponse(
